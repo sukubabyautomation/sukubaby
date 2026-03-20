@@ -31,6 +31,7 @@ function getRegressionSuite_() {
     tc_it_08_discord_failed_(),
     tc_it_09_email_failed_(),
     tc_it_10_partial_success_(),
+    tc_it_11_email_blank_escalated_(),
     tc_st_01_start_next_(),
     tc_st_02_support_undecided_mail_(),
     tc_st_03_support_undecided_admin_(),
@@ -831,6 +832,41 @@ function tc_st_01_start_next_() {
     assert: function(ss) {
       const posts = splitSummaryAndNormalPosts_(ss);
       return { ok: posts.normal.length === 1, actualSummary: 'normal=' + posts.normal.length, message: 'normal=' + posts.normal.length };
+    }
+  };
+}
+
+function tc_it_11_email_blank_escalated_() {
+  const seed = baseSeed_();
+  seed.members = [
+    memberSeed_({
+      member_key: 'MEM00000027',
+      email: '',
+      handle_name: 'メール空会員',
+    })
+  ];
+  seed.rules = [emailRule_({ rule_id: 'IT11_BLANK', rule_name: 'メール空欄確認' })];
+  seed.conditions = [condition_({ rule_id: 'IT11_BLANK', col: 'member_key', op: 'EQ', value: 'MEM00000027', type: 'STRING' })];
+
+  return {
+    id: 'IT-11',
+    category: '結合',
+    title: 'メール空欄時 管理者通知確認',
+    expected: 'EMAIL failed記録 + ADMIN_DISCORD送信',
+    seed,
+    execute: function() {
+      runMonthlyNotice_('TEST');
+    },
+    assert: function(ss) {
+      const failed = failedLogs_(ss, 'EMAIL').filter(x => String(x.rule_id || '') === 'IT11_BLANK');
+      const adminPosts = readSheet_(ss, 'Fake_Discord_Posts').filter(x => String(x.content || '').indexOf('メールアドレス未設定のため送信できませんでした') >= 0);
+
+      const ok = failed.length === 1 && adminPosts.length === 1;
+      return {
+        ok,
+        actualSummary: `email_failed=${failed.length},admin_posts=${adminPosts.length}`,
+        message: `email_failed=${failed.length},admin_posts=${adminPosts.length}`,
+      };
     }
   };
 }

@@ -81,6 +81,9 @@ function buildEmailBody_(rule, member, targetMonth) {
   return lines.join('\n');
 }
 
+/**
+ * 管理者向けエスカレーションメッセージを作る
+ */
 function buildAdminEscalationMessage_(rule, member, targetMonth, systemConfig) {
   const lines = [];
 
@@ -91,6 +94,31 @@ function buildAdminEscalationMessage_(rule, member, targetMonth, systemConfig) {
   lines.push(`【要対応】${rule.rule_name || rule.rule_id}`);
   lines.push(`${toMonthLabel_(targetMonth)}の通知で、下記会員へのメール送信回数が上限に達しました。`);
   lines.push('運営側で個別対応をお願いします。');
+  lines.push('');
+
+  lines.push(`会員キー: ${member.member_key || ''}`);
+  lines.push(`Discord表示名: ${member.handle_name || ''}`);
+  lines.push(`メールアドレス: ${member.email || ''}`);
+  lines.push(`メールアドレス②: ${member.email2 || ''}`);
+  lines.push(`電話番号: ${member.tel_number || ''}`);
+  lines.push(`LINE名: ${member.line_name || ''}`);
+
+  return lines.join('\n');
+}
+
+/**
+ * 管理者向けメールアドレス未設定メッセージを作る
+ */
+function buildAdminMissingEmailMessage_(rule, member, targetMonth, systemConfig) {
+  const lines = [];
+
+  if (systemConfig.admin_mention) {
+    lines.push(systemConfig.admin_mention);
+  }
+
+  lines.push(`【要対応】${rule.rule_name || rule.rule_id}`);
+  lines.push(`${toMonthLabel_(targetMonth)}の通知で、下記会員はメールアドレス未設定のため送信できませんでした。`);
+  lines.push('会員マスタを確認のうえ、個別対応をお願いします。');
   lines.push('');
 
   lines.push(`会員キー: ${member.member_key || ''}`);
@@ -139,6 +167,7 @@ function buildSendJobs_(result, targetMonth, systemConfig, destinations) {
     if (rule.notify_channel === 'EMAIL') {
       bucket.forEach(x => {
         const member = x.member;
+        const email = String(member.email || '').trim();
 
         if (rule.rule_id === supportRuleId) {
           const count = toSafeNumber_(member.support_undecided_email_sent_count, 0);
@@ -152,19 +181,30 @@ function buildSendJobs_(result, targetMonth, systemConfig, destinations) {
                 member_key: member.member_key,
                 webhook_url: adminDest.webhook_url,
                 content: buildAdminEscalationMessage_(rule, member, targetMonth, systemConfig),
+                admin_detail: 'support_undecided escalated',
               });
             }
             return;
           }
         }
 
-        if (!member.email) return;
+        if (!email) {
+          jobs.push({
+            type: 'EMAIL_MISSING',
+            rule_id: rule.rule_id,
+            member_key: member.member_key,
+            webhook_url: adminDest.webhook_url,
+            content: buildAdminMissingEmailMessage_(rule, member, targetMonth, systemConfig),
+            detail: 'email missing',
+          });
+          return;
+        }
 
         jobs.push({
           type: 'EMAIL',
           rule_id: rule.rule_id,
           member_key: member.member_key,
-          to: member.email,
+          to: email,
           subject: buildEmailSubject_(rule, member, targetMonth),
           body: buildEmailBody_(rule, member, targetMonth),
         });

@@ -297,6 +297,36 @@ function runMonthlyNotice_(triggerType, onlyRuleId) {
         return;
       }
 
+            if (job.type === 'EMAIL_MISSING') {
+        notificationLogs.push({
+          run_id: runId,
+          run_at: runAt,
+          channel: 'EMAIL',
+          status: 'FAILED',
+          target_month: targetMonth,
+          rule_id: job.rule_id,
+          member_key: job.member_key,
+          detail: job.detail || 'email missing',
+          error: 'メールアドレス未設定のため送信不可',
+        });
+
+        postDiscordWebhookChunked_(job.webhook_url, job.content);
+
+        notificationLogs.push({
+          run_id: runId,
+          run_at: runAt,
+          channel: 'ADMIN_DISCORD',
+          status: 'SENT',
+          target_month: targetMonth,
+          rule_id: job.rule_id,
+          member_key: job.member_key,
+          detail: 'email missing escalated',
+          error: '',
+        });
+
+        return;
+      }
+
       if (job.type === 'ADMIN_DISCORD') {
         postDiscordWebhookChunked_(job.webhook_url, job.content);
 
