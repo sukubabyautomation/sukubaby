@@ -6,8 +6,8 @@
  *  - dest_name
  *  - webhook_url
  */
-function loadDestinations_(ss) {
-  const sh = mustSheet_(ss, 'Config_Destinations');
+function loadDestinations_(masterSs) {
+  const sh = mustSheet_(masterSs, 'Config_Destinations');
   const { header, rows } = getHeaderAndRows_(sh);
 
   assertHeaderHasKeys_('Config_Destinations', header, ['dest_id', 'dest_name', 'webhook_url']);

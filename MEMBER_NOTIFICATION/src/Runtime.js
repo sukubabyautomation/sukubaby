@@ -18,10 +18,26 @@ function getEnvOrThrow_(key) {
 }
 
 /**
- * 実行時のスプレッドシートを取得する
- * @returns {GoogleAppsScript.Spreadsheet.Sheet} 実行時のスプレッドシート
+ * 指定IDのスプレッドシートを取得する。
+ * アクティブブックが同一IDならそれを優先利用する。
+ * @param {string} spreadsheetId
+ * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet}
  */
-function getRuntimeSpreadsheet_() {
+function openSpreadsheetByIdWithActiveFallback_(spreadsheetId) {
+  const active = SpreadsheetApp.getActiveSpreadsheet();
+  if (active && active.getId() === spreadsheetId) {
+    return active;
+  }
+  return SpreadsheetApp.openById(spreadsheetId);
+}
+
+/**
+ * 実行時のマスタ&設定ブックを取得する
+ * - テスト時: TEST_SPREADSHEET_ID
+ * - 通常時: MASTER_SPREADSHEET_ID
+ * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet}
+ */
+function getRuntimeMasterSpreadsheet_() {
   if (isTestMode_()) {
     const testId = PropertiesService.getScriptProperties().getProperty(TEST_SPREADSHEET_ID_KEY);
     if (!testId) {
@@ -30,14 +46,27 @@ function getRuntimeSpreadsheet_() {
     return SpreadsheetApp.openById(String(testId).trim());
   }
 
-  const ssId = getEnvOrThrow_('SPREADSHEET_ID');
+  const ssId = getEnvOrThrow_('MASTER_SPREADSHEET_ID');
+  return openSpreadsheetByIdWithActiveFallback_(ssId);
+}
 
-  const active = SpreadsheetApp.getActiveSpreadsheet();
-  if (active && active.getId() === ssId) {
-    return active;
+/**
+ * 実行時のログブックを取得する
+ * - テスト時: TEST_SPREADSHEET_ID
+ * - 通常時: LOG_SPREADSHEET_ID
+ * @returns {GoogleAppsScript.Spreadsheet.Spreadsheet}
+ */
+function getRuntimeLogSpreadsheet_() {
+  if (isTestMode_()) {
+    const testId = PropertiesService.getScriptProperties().getProperty(TEST_SPREADSHEET_ID_KEY);
+    if (!testId) {
+      throw new Error('TEST_MODE is ON but TEST_SPREADSHEET_ID is not set.');
+    }
+    return SpreadsheetApp.openById(String(testId).trim());
   }
 
-  return SpreadsheetApp.openById(ssId);
+  const ssId = getEnvOrThrow_('LOG_SPREADSHEET_ID');
+  return openSpreadsheetByIdWithActiveFallback_(ssId);
 }
 
 /** 現在日時を取得する。テストモードの場合はテスト用日時を返す

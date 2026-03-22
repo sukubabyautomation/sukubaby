@@ -13,8 +13,8 @@
  *  - support_undecided_email_sent_count
  *  - support_undecided_escalated
  */
-function loadMembers_(ss) {
-  const sh = mustSheet_(ss, 'Members');
+function loadMembers_(masterSs) {
+  const sh = mustSheet_(masterSs, 'Members');
   const { header, rows } = getHeaderAndRows_(sh);
 
   assertHeaderHasKeys_('Members', header, ['member_key', 'handle_name', 'discord_user_id', 'is_active']);
@@ -66,16 +66,16 @@ function buildRowObject_(header, row) {
 
 /**
  * member_key ごとに列更新
- * patches = {
+ * memberPatches = {
  *   "MEM001": { support_undecided_email_sent_count: 2, support_undecided_escalated: true },
  *   ...
  * }
  */
-function updateMembersByMemberKey_(ss, patches) {
-  const keys = Object.keys(patches || {});
+function updateMembersByMemberKey_(masterSs, memberPatches) {
+  const keys = Object.keys(memberPatches || {});
   if (keys.length === 0) return;
 
-  const sh = mustSheet_(ss, 'Members');
+  const sh = mustSheet_(masterSs, 'Members');
   const { header, rows } = getHeaderAndRows_(sh);
   const idx = indexMap_(header);
 
@@ -92,7 +92,7 @@ function updateMembersByMemberKey_(ss, patches) {
     const rowNum = rowNumByMemberKey[memberKey];
     if (!rowNum) return;
 
-    const patch = patches[memberKey] || {};
+    const patch = memberPatches[memberKey] || {};
     Object.keys(patch).forEach(fieldKey => {
       if (typeof idx[fieldKey] === 'undefined') {
         throw new Error(`Members: update target column not found: ${fieldKey}`);

@@ -9,7 +9,7 @@
  *
  * 前提:
  * - 各シートは「1行目:日本語」「2行目:英字キー」「3行目以降:データ」
- * - Discord送信/分割、Config読み込み、条件評価は他ファイルに実装済み
+ * - Config_Rules.notify_channel は "DISCORD_ROOM" or "EMAIL" を想定
  ****************/
 
 const TIMEZONE = 'Asia/Tokyo';
@@ -182,21 +182,24 @@ function createMonthlyRuleTriggerFromUi_(ruleId, firstRunStr, day, hour, minute)
  * @param {string=} onlyRuleId 指定時、そのrule_idだけ実行
  */
 function runMonthlyNotice_(triggerType, onlyRuleId) {
-  const ss = getRuntimeSpreadsheet_();
+  const masterSs = getRuntimeMasterSpreadsheet_();
+  const logSs = getRuntimeLogSpreadsheet_();
 
   const runAt = getRuntimeNow_();
   const runId = Utilities.formatDate(runAt, TIMEZONE, 'yyyyMMdd-HHmmss');
   const targetMonth = getNextMonthKey_(runAt);
 
-  const systemConfig = loadSystemConfig_(ss);
-  const destinations = loadDestinations_(ss);
-  let rules = loadRules_(ss, destinations);
-  const conditionsByRule = loadConditions_(ss);
-  const members = loadMembers_(ss);
+  const systemConfig = loadSystemConfig_(masterSs);
+  const destinations = loadDestinations_(masterSs);
+  let rules = loadRules_(masterSs, destinations);
+  const conditionsByRule = loadConditions_(masterSs);
+  const members = loadMembers_(masterSs);
 
   if (onlyRuleId) {
     Logger.log('isTestMode=' + isTestMode_());
-    Logger.log('runtimeSpreadsheetId=' + getRuntimeSpreadsheet_().getId());
+    Logger.log('runtimeMasterSpreadsheetId=' + masterSs.getId());
+    Logger.log('runtimeLogSpreadsheetId=' + logSs.getId());
+
     rules = rules.filter(r => r.rule_id === onlyRuleId);
     if (rules.length === 0) throw new Error(`指定した rule_id が見つかりません: ${onlyRuleId}`);
   }
@@ -207,7 +210,7 @@ function runMonthlyNotice_(triggerType, onlyRuleId) {
   const dataIssues = validationResult.issues || [];
 
   if (dataIssues.length > 0) {
-    appendDataIssueLogs_(ss, dataIssues.map(issue => ({
+    appendDataIssueLogs_(logSs, dataIssues.map(issue => ({
       run_id: runId,
       run_at: runAt,
       trigger_type: onlyRuleId ? `${triggerType}(${onlyRuleId})` : triggerType,
@@ -235,7 +238,7 @@ function runMonthlyNotice_(triggerType, onlyRuleId) {
     }
   }
 
-  const sentIndex = buildSentIndex_(ss, targetMonth);
+  const sentIndex = buildSentIndex_(logSs, targetMonth);
   const result = evaluateMembersByRules_(validMembers, rules, conditionsByRule, runAt, targetMonth, sentIndex);
   const jobs = buildSendJobs_(result, targetMonth, systemConfig, destinations);
 
@@ -297,7 +300,7 @@ function runMonthlyNotice_(triggerType, onlyRuleId) {
         return;
       }
 
-            if (job.type === 'EMAIL_MISSING') {
+      if (job.type === 'EMAIL_MISSING') {
         notificationLogs.push({
           run_id: runId,
           run_at: runAt,
@@ -352,7 +355,7 @@ function runMonthlyNotice_(triggerType, onlyRuleId) {
 
     } catch (e) {
       const errorText = String(e && e.stack ? e.stack : e);
-
+      
       // Discord系失敗
       if (job.type === 'DISCORD_ROOM' || job.type === 'ADMIN_DISCORD') {
         discordOk = false;
@@ -438,20 +441,19 @@ function runMonthlyNotice_(triggerType, onlyRuleId) {
         return;
       }
 
-      // その他
       if (!err) err = errorText;
     }
   });
 
   if (notificationLogs.length > 0) {
-    appendNotificationLogs_(ss, notificationLogs);
+    appendNotificationLogs_(logSs, notificationLogs);
   }
 
   if (Object.keys(memberPatches).length > 0) {
-    updateMembersByMemberKey_(ss, memberPatches);
+    updateMembersByMemberKey_(masterSs, memberPatches);
   }
 
-  appendRunLog_(ss, {
+  appendRunLog_(logSs, {
     run_id: runId,
     run_at: runAt,
     trigger_type: onlyRuleId ? `${triggerType}(${onlyRuleId})` : triggerType,
@@ -598,9 +600,9 @@ function ensureDispatcherTrigger_() {
  * 指定 rule_id が Config_Rules に存在するかチェック
  */
 function assertRuleExists_(ruleId) {
-  const ss = getRuntimeSpreadsheet_();
-  const destinations = loadDestinations_(ss);
-  const rules = loadRules_(ss, destinations);
+  const masterSs = getRuntimeMasterSpreadsheet_();
+  const destinations = loadDestinations_(masterSs);
+  const rules = loadRules_(masterSs, destinations);
 
   if (!rules.some(r => r.rule_id === ruleId)) {
     throw new Error(`指定した rule_id が見つかりません: ${ruleId}`);
@@ -637,14 +639,3 @@ function parseJstDateTime_(s) {
   return new Date(y, mo - 1, d, h, mi, 0);
 }
 
-function getTargetSs_() {
-  const active = SpreadsheetApp.getActiveSpreadsheet();
-  if (active) {
-    // 今開いているシートがターゲットならそれを使う（最速＆権限問題が起きにくい）
-    if (active.getId() === SPREADSHEET_ID) return active;
-    // もし違っても、とりあえず active を返す（デバッグ用）
-    // return active;
-  }
-  // 最後の手段として openById
-  return SpreadsheetApp.openById(SPREADSHEET_ID);
-}

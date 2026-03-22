@@ -5,8 +5,8 @@
  *  - config_key
  *  - config_value
  */
-function loadSystemConfig_(ss) {
-  const sh = mustSheet_(ss, 'Config_System');
+function loadSystemConfig_(masterSs) {
+  const sh = mustSheet_(masterSs, 'Config_System');
   const { header, rows } = getHeaderAndRows_(sh);
 
   assertHeaderHasKeys_('Config_System', header, ['config_key', 'config_value']);
@@ -45,8 +45,8 @@ function loadSystemConfig_(ss) {
  *  - ops_contact_text
  *  - mention_member
  */
-function loadRules_(ss, destinations) {
-  const sh = mustSheet_(ss, 'Config_Rules');
+function loadRules_(masterSs, destinations) {
+  const sh = mustSheet_(masterSs, 'Config_Rules');
   const { header, rows } = getHeaderAndRows_(sh);
 
   assertHeaderHasKeys_('Config_Rules', header, [
@@ -128,8 +128,8 @@ function loadRules_(ss, destinations) {
  *  - type
  *  - enabled
  */
-function loadConditions_(ss) {
-  const sh = mustSheet_(ss, 'Config_Conditions');
+function loadConditions_(masterSs) {
+  const sh = mustSheet_(masterSs, 'Config_Conditions');
   const { header, rows } = getHeaderAndRows_(sh);
 
   assertHeaderHasKeys_('Config_Conditions', header, [

@@ -75,7 +75,7 @@ function showTestModeStatusUi() {
 }
 
 function recordFakeDiscordPost_(webhookUrl, content) {
-  const ss = getRuntimeSpreadsheet_();
+  const ss = getRuntimeMasterSpreadsheet_();
   const sh = ss.getSheetByName('Fake_Discord_Posts');
   if (!sh) return;
 
@@ -89,7 +89,7 @@ function recordFakeDiscordPost_(webhookUrl, content) {
 }
 
 function recordFakeEmailPost_(to, subject, body) {
-  const ss = getRuntimeSpreadsheet_();
+  const ss = getRuntimeMasterSpreadsheet_();
   const sh = ss.getSheetByName('Fake_Email_Posts');
   if (!sh) return;
 

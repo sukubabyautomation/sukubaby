@@ -8,8 +8,8 @@
  * Log_Notifications から「既に送った」インデックスを作る
  * key: rule_id|target_month|member_key
  */
-function buildSentIndex_(ss, targetMonth) {
-  const sh = mustSheet_(ss, 'Log_Notifications');
+function buildSentIndex_(logSs, targetMonth) {
+  const sh = mustSheet_(logSs, 'Log_Notifications');
   const { header, rows } = getHeaderAndRows_(sh);
 
   assertHeaderHasKeys_('Log_Notifications', header, ['status', 'target_month', 'rule_id', 'member_key']);
@@ -52,10 +52,10 @@ function normalizeTargetMonth_(v) {
 /**
  * 通知ログ追記
  */
-function appendNotificationLogs_(ss, logRows) {
+function appendNotificationLogs_(logSs, logRows) {
   if (!logRows || logRows.length === 0) return;
 
-  const sh = mustSheet_(ss, 'Log_Notifications');
+  const sh = mustSheet_(logSs, 'Log_Notifications');
   const { header } = getHeaderAndRows_(sh);
   const idx = indexMap_(header);
 
@@ -84,8 +84,8 @@ function appendNotificationLogs_(ss, logRows) {
 /**
  * Log_Runs に実行ログを追記
  */
-function appendRunLog_(ss, obj) {
-  const sh = mustSheet_(ss, 'Log_Runs');
+function appendRunLog_(logSs, obj) {
+  const sh = mustSheet_(logSs, 'Log_Runs');
   sh.appendRow([
     obj.run_id,
     obj.run_at,
@@ -99,10 +99,10 @@ function appendRunLog_(ss, obj) {
 /**
  * データ不備ログ追記
  */
-function appendDataIssueLogs_(ss, logRows) {
+function appendDataIssueLogs_(logSs, logRows) {
   if (!logRows || logRows.length === 0) return;
 
-  const sh = mustSheet_(ss, 'Log_DataIssues');
+  const sh = mustSheet_(logSs, 'Log_DataIssues');
   const { header } = getHeaderAndRows_(sh);
   const idx = indexMap_(header);
 

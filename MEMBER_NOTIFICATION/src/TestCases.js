@@ -21,6 +21,7 @@ function getRegressionSuite_() {
     tc_ut_14_invalid_discord_id_(),
     tc_ut_15_invalid_date_format_(),
     tc_ut_16_invalid_date_range_(),
+    tc_ut_17_email_blank_email_missing_job_(),
     tc_it_01_discord_success_(),
     tc_it_02_email_success_(),
     tc_it_03_admin_discord_(),
@@ -543,6 +544,37 @@ function tc_ut_16_invalid_date_range_() {
   };
 }
 
+function tc_ut_17_email_blank_email_missing_job_() {
+  const seed = baseSeed_();
+  seed.members = [memberSeed_({ member_key: 'MEM00000044', email: '' })];
+  seed.rules = [emailRule_({ rule_id: 'UT17_BLANK', rule_name: 'メール空欄ジョブ確認' })];
+  seed.conditions = [condition_({ rule_id: 'UT17_BLANK', col: 'member_key', op: 'EQ', value: 'MEM00000044', type: 'STRING' })];
+  return {
+    id: 'UT-17',
+    category: '単体',
+    title: 'メール空欄時 EMAIL_MISSINGジョブ確認',
+    expected: 'EMAIL_MISSING通知生成',
+    seed,
+    execute: function(ss) {
+      const members = loadMembers_(ss);
+      const destinations = loadDestinations_(ss);
+      const rules = loadRules_(ss, destinations);
+      const conds = loadConditions_(ss);
+      const result = evaluateMembersByRules_(members, rules, conds, new Date(), nextMonthKeyForTest_(), new Set());
+      this._jobs = buildSendJobs_(result, nextMonthKeyForTest_(), loadSystemConfig_(ss), destinations);
+    },
+    assert: function() {
+      const types = this._jobs.map(x => x.type);
+      const ok = types.length === 1 && types[0] === 'EMAIL_MISSING';
+      return {
+        ok,
+        actualSummary: JSON.stringify(types),
+        message: JSON.stringify(types)
+      };
+    }
+  };
+}
+
 function tc_it_01_discord_success_() {
   const seed = baseSeed_();
   seed.members = [memberSeed_({ member_key: 'MEM00000017' })];
@@ -858,14 +890,26 @@ function tc_it_11_email_blank_escalated_() {
       runMonthlyNotice_('TEST');
     },
     assert: function(ss) {
+      const emails = readSheet_(ss, 'Fake_Email_Posts');
       const failed = failedLogs_(ss, 'EMAIL').filter(x => String(x.rule_id || '') === 'IT11_BLANK');
-      const adminPosts = readSheet_(ss, 'Fake_Discord_Posts').filter(x => String(x.content || '').indexOf('メールアドレス未設定のため送信できませんでした') >= 0);
+      const adminSent = sentLogs_(ss).filter(x =>
+        String(x.channel || '') === 'ADMIN_DISCORD' &&
+        String(x.rule_id || '') === 'IT11_BLANK'
+      );
+      const adminPosts = readSheet_(ss, 'Fake_Discord_Posts').filter(x =>
+        String(x.content || '').indexOf('メールアドレス未設定のため送信できませんでした') >= 0
+      );
 
-      const ok = failed.length === 1 && adminPosts.length === 1;
+      const ok =
+        emails.length === 0 &&
+        failed.length === 1 &&
+        adminSent.length === 1 &&
+        adminPosts.length === 1;
+
       return {
         ok,
-        actualSummary: `email_failed=${failed.length},admin_posts=${adminPosts.length}`,
-        message: `email_failed=${failed.length},admin_posts=${adminPosts.length}`,
+        actualSummary: `emails=${emails.length},email_failed=${failed.length},admin_sent=${adminSent.length},admin_posts=${adminPosts.length}`,
+        message: `emails=${emails.length},email_failed=${failed.length},admin_sent=${adminSent.length},admin_posts=${adminPosts.length}`,
       };
     }
   };
@@ -1037,15 +1081,49 @@ function tc_bv_11_email_blank_() {
   const seed = baseSeed_();
   seed.members = [memberSeed_({ member_key: 'MEM00000041', email: '' })];
   seed.rules = [emailRule_()];
-  seed.conditions = [condition_({ rule_id: 'SUPPORT_UNDECIDED', col: 'member_key', op: 'EQ', value: 'MEM00000041', type: 'STRING' })];
+  seed.conditions = [condition_({
+    rule_id: 'SUPPORT_UNDECIDED',
+    col: 'member_key',
+    op: 'EQ',
+    value: 'MEM00000041',
+    type: 'STRING'
+  })];
+
   return {
-    id: 'BV-11', category: '境界値', title: 'email空欄の確認', expected: '送信されず必要に応じて除外される', seed,
-    execute: function() { runMonthlyNotice_('TEST'); },
+    id: 'BV-11',
+    category: '境界値',
+    title: 'email空欄の確認',
+    expected: 'メール送信されず、管理者通知される',
+    seed,
+    execute: function() {
+      runMonthlyNotice_('TEST');
+    },
     assert: function(ss) {
       const emails = readSheet_(ss, 'Fake_Email_Posts');
-      const failed = failedLogs_(ss, 'EMAIL');
-      const ok = emails.length === 0 && failed.length === 0;
-      return { ok, actualSummary: `emails=${emails.length},failed=${failed.length}`, message: `emails=${emails.length},failed=${failed.length}` };
+      const failedEmailLogs = failedLogs_(ss, 'EMAIL').filter(x =>
+        String(x.rule_id || '') === 'SUPPORT_UNDECIDED' &&
+        String(x.member_key || '') === 'MEM00000041'
+      );
+      const adminDiscordSent = sentLogs_(ss).filter(x =>
+        String(x.channel || '') === 'ADMIN_DISCORD' &&
+        String(x.rule_id || '') === 'SUPPORT_UNDECIDED' &&
+        String(x.member_key || '') === 'MEM00000041'
+      );
+      const discordPosts = readSheet_(ss, 'Fake_Discord_Posts').filter(x =>
+        String(x.content || '').indexOf('メールアドレス未設定のため送信できませんでした') >= 0
+      );
+
+      const ok =
+        emails.length === 0 &&
+        failedEmailLogs.length === 1 &&
+        adminDiscordSent.length === 1 &&
+        discordPosts.length === 1;
+
+      return {
+        ok,
+        actualSummary: `emails=${emails.length},emailFailed=${failedEmailLogs.length},adminDiscordSent=${adminDiscordSent.length},discordPosts=${discordPosts.length}`,
+        message: `emails=${emails.length},emailFailed=${failedEmailLogs.length},adminDiscordSent=${adminDiscordSent.length},discordPosts=${discordPosts.length}`
+      };
     }
   };
 }
