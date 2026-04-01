@@ -34,7 +34,7 @@ function loadSystemConfig_(masterSs) {
  *  - rule_id
  *  - rule_name
  *  - enabled
- *  - dest_id
+ *  - destination_code
  *  - notify_channel
  *  - email_subject
  *  - priority (任意)
@@ -56,6 +56,8 @@ function loadRules_(masterSs, destinations) {
     'include_ops_line', 'ops_contact_text', 'mention_member'
   ]);
 
+  const hasDestinationCode = header.indexOf('destination_code') >= 0;
+  const hasDestId = header.indexOf('dest_id') >= 0;
   const idx = indexMap_(header);
   const rules = rows
     .filter(r => (r[idx.enabled] === true) || (normalizeBool_(r[idx.enabled]) === true))
@@ -71,20 +73,28 @@ function loadRules_(masterSs, destinations) {
 
       const priority = (typeof idx.priority !== 'undefined') ? Number(r[idx.priority] || 9999) : 9999;
 
-      let destId = '';
+      let destinationCode = '';
       let destName = '';
       let webhookUrl = '';
 
       if (notifyChannel === 'DISCORD') {
-        destId = String(r[idx.dest_id] || '').trim();
-        if (!destId) throw new Error(`Config_Rules: dest_id is empty for DISCORD rule_id=${ruleId}`);
+        const hasDestinationCode = (typeof idx.destination_code !== 'undefined');
+        const hasDestId = (typeof idx.dest_id !== 'undefined');
+        const keyCol = hasDestinationCode ? 'destination_code' : (hasDestId ? 'dest_id' : '');
 
-        const dest = destinations[destId];
-        if (!dest || !dest.webhook_url) {
-          throw new Error(`Config_Destinations: webhook_url not found for dest_id=${destId} (rule_id=${ruleId})`);
+        if (!keyCol) {
+          throw new Error(`Config_Rules: destination_code (or legacy dest_id) column is required for DISCORD rule_id=${ruleId}`);
         }
 
-        destName = dest.dest_name || destId;
+        destinationCode = String(r[idx[keyCol]] || '').trim();
+        if (!destinationCode) throw new Error(`Config_Rules: ${keyCol} is empty for DISCORD rule_id=${ruleId}`);
+
+        const dest = destinations[destinationCode];
+        if (!dest || !dest.webhook_url) {
+          throw new Error(`Config_Destinations: webhook_url not found for destination_code=${destinationCode} (rule_id=${ruleId})`);
+        }
+
+        destName = dest.dest_name || destinationCode;
         webhookUrl = dest.webhook_url;
       }
 
@@ -96,7 +106,8 @@ function loadRules_(masterSs, destinations) {
 
         notify_channel: notifyChannel,
 
-        dest_id: destId,
+        destination_code: destinationCode,
+        dest_id: destinationCode,
         dest_name: destName,
         webhook_url: webhookUrl,
 

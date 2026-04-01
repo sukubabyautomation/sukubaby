@@ -56,9 +56,9 @@ function getRegressionSuite_() {
 function baseSeed_() {
   return {
     destinations: [
-      { dest_id: 'DEST_ROOM', dest_name: '通常通知', webhook_url: 'https://fake.discord/room' },
-      { dest_id: 'DEST_ADMIN', dest_name: '管理者', webhook_url: 'https://fake.discord/admin' },
-      { dest_id: 'DEST_FAIL', dest_name: '失敗通知', webhook_url: 'https://discord.invalid/fail' },
+      { destination_code: 'DEST_ROOM', dest_name: '通常通知', webhook_url: 'https://fake.discord/room' },
+      { destination_code: 'DEST_ADMIN', dest_name: '管理者', webhook_url: 'https://fake.discord/admin' },
+      { destination_code: 'DEST_FAIL', dest_name: '失敗通知', webhook_url: 'https://discord.invalid/fail' },
     ],
     system: [
       { config_key: 'admin_dest_id', config_value: 'DEST_ADMIN' },
@@ -114,7 +114,7 @@ function discordRule_(overrides) {
     rule_name: '開始予定',
     enabled: true,
     priority: 1,
-    dest_id: 'DEST_ROOM',
+    destination_code: 'DEST_ROOM',
     notify_channel: 'DISCORD',
     email_subject: '',
     message_section_title: '対象者',
@@ -132,7 +132,7 @@ function emailRule_(overrides) {
     rule_name: '未定',
     enabled: true,
     priority: 1,
-    dest_id: '',
+    destination_code: '',
     notify_channel: 'EMAIL',
     email_subject: 'ご案内 ○月',
     message_section_title: '対象',
@@ -159,7 +159,7 @@ function condition_(overrides) {
 
 function destinationSeed_(overrides) {
   return Object.assign({
-    dest_id: 'DEST_MAIN',
+    destination_code: 'DEST_MAIN',
     dest_name: 'テスト通知先',
     webhook_url: 'https://example.com/webhook',
   }, overrides || {});
@@ -695,16 +695,16 @@ function tc_it_07_invalid_summary_() {
 function tc_it_08_discord_failed_() {
   const seed = baseSeed_();
   seed.members = [memberSeed_({ member_key: 'MEM00000025' })];
-  seed.rules = [discordRule_({ rule_id: 'IT08_FAIL', rule_name: 'Discord障害確認', dest_id: 'DEST_FAIL' })];
+  seed.rules = [discordRule_({ rule_id: 'IT08_FAIL', rule_name: 'Discord障害確認', destination_code: 'DEST_FAIL' })];
   seed.conditions = [condition_({ rule_id: 'IT08_FAIL' })];
   seed.destinations = [
     destinationSeed_({
-      dest_id: 'DEST_FAIL',
+      destination_code: 'DEST_FAIL',
       dest_name: '失敗用Discord',
       webhook_url: TEST_FAIL_DISCORD_WEBHOOK,
     }),
     destinationSeed_({
-      dest_id: 'DEST_ADMIN',
+      destination_code: 'DEST_ADMIN',
       dest_name: '管理者通知先',
       webhook_url: 'https://example.com/admin-webhook',
     }),
@@ -784,7 +784,7 @@ function tc_it_10_partial_success_() {
     discordRule_({
       rule_id: 'IT10_FAIL_DISCORD',
       rule_name: '部分成功_失敗側',
-      dest_id: 'DEST_FAIL',
+      destination_code: 'DEST_FAIL',
     }),
     emailRule_({
       rule_id: 'IT10_OK_EMAIL',
@@ -809,12 +809,12 @@ function tc_it_10_partial_success_() {
 
   seed.destinations = [
     destinationSeed_({
-      dest_id: 'DEST_FAIL',
+      destination_code: 'DEST_FAIL',
       dest_name: '失敗用Discord',
       webhook_url: TEST_FAIL_DISCORD_WEBHOOK,
     }),
     destinationSeed_({
-      dest_id: 'DEST_ADMIN',
+      destination_code: 'DEST_ADMIN',
       dest_name: '管理者通知先',
       webhook_url: 'https://example.com/admin-webhook',
     }),

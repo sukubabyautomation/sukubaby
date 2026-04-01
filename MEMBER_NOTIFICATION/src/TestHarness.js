@@ -322,7 +322,7 @@ function setupConfigRulesSheet_(sh) {
     ['必須','ルール名','rule_name'],
     ['必須','有効','enabled'],
     ['任意','優先度','priority'],
-    ['任意','通知先ID','dest_id'],
+    ['任意','通知先コード','destination_code'],
     ['必須','通知チャネル','notify_channel'],
     ['任意','メール件名','email_subject'],
     ['任意','セクションタイトル','message_section_title'],
@@ -349,7 +349,7 @@ function setupConfigConditionsSheet_(sh) {
 
 function setupConfigDestinationsSheet_(sh) {
   setupSheetByHeaders_(sh, [
-    ['必須','通知先ID','dest_id'],
+    ['必須','通知先コード','destination_code'],
     ['任意','通知先名','dest_name'],
     ['必須','WebhookURL','webhook_url'],
   ]);
