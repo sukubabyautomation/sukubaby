@@ -1,0 +1,11 @@
+{
+  "name": "@sukubaby/common",
+  "version": "1.0.0",
+  "private": true,
+  "main": "src/index.js",
+  "dependencies": {
+    "discord.js": "14.25.1",
+    "express": "4.22.1",
+    "googleapis": "171.4.0"
+  }
+}

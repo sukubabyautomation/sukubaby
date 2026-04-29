@@ -1,2 +1,4 @@
 ROLE_GRANT/.clasp.json
 ROLE_GRANT/.clasp.local.json
+node_modules/
+.pnpm-store/

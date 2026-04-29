@@ -1,0 +1,11 @@
+{
+  "name": "sukubaby-automation",
+  "version": "1.0.0",
+  "private": true,
+  "packageManager": "pnpm@10.0.0",
+  "scripts": {
+    "dev:discord_member_fetch": "pnpm --filter discord_member_fetch dev",
+    "start:discord_member_fetch": "pnpm --filter discord_member_fetch start",
+    "test": "pnpm -r test"
+  }
+}
