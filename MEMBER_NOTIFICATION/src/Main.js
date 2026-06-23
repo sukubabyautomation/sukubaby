@@ -508,6 +508,8 @@ function dispatchScheduledRuns_() {
         safeRunRule_(s.rule_id, `SCHEDULE_RULE:monthly(${s.schedule_id})`);
         s.last_monthly_run = yyyyMm;
       }
+        // 同時刻に複数ルールがある場合のDiscord連投対策
+        Utilities.sleep(3000);
 
       saveSchedule_(s);
     });

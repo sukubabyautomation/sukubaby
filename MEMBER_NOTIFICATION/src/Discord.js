@@ -1,6 +1,8 @@
-// Discord.gs
+// Discord.js
 
 const DISCORD_CONTENT_LIMIT = 2000;
+const DISCORD_MAX_RETRY = 5;
+const DISCORD_POST_INTERVAL_MS = 1500;
 
 /** Webhook送信（contentのみ） */
 function postDiscordWebhook_(webhookUrl, content) {
@@ -8,18 +10,51 @@ function postDiscordWebhook_(webhookUrl, content) {
 
   const payload = { content: String(content || '') };
 
-  const res = UrlFetchApp.fetch(webhookUrl, {
-    method: 'post',
-    contentType: 'application/json',
-    payload: JSON.stringify(payload),
-    muteHttpExceptions: true,
-  });
+  for (let attempt = 1; attempt <= DISCORD_MAX_RETRY; attempt++) {
+    const res = UrlFetchApp.fetch(webhookUrl, {
+      method: 'post',
+      contentType: 'application/json',
+      payload: JSON.stringify(payload),
+      muteHttpExceptions: true,
+    });
 
-  const code = res.getResponseCode();
-  const text = res.getContentText();
-  if (code < 200 || code >= 300) {
+    const code = res.getResponseCode();
+    const text = res.getContentText();
+
+    if (code >= 200 && code < 300) return;
+
+    if (code === 429) {
+      const waitMs = getDiscordRetryAfterMs_(res, text);
+      Utilities.sleep(waitMs);
+      continue;
+    }
+
     throw new Error(`Discord webhook failed: ${code} ${text}`);
   }
+
+  throw new Error(`Discord webhook failed: 429 retry exhausted`);
+}
+
+function getDiscordRetryAfterMs_(res, text) {
+  const headers = res.getAllHeaders ? res.getAllHeaders() : {};
+  const retryAfter =
+    headers['Retry-After'] ||
+    headers['retry-after'] ||
+    headers['X-RateLimit-Reset-After'] ||
+    headers['x-ratelimit-reset-after'];
+
+  if (retryAfter) {
+    return Math.ceil(Number(retryAfter) * 1000) + 500;
+  }
+
+  try {
+    const json = JSON.parse(text || '{}');
+    if (json.retry_after) {
+      return Math.ceil(Number(json.retry_after) * 1000) + 500;
+    }
+  } catch (e) {}
+
+  return 5000;
 }
 
 /** 2000文字を超える場合は安全に分割して送信 */
@@ -37,7 +72,7 @@ function postDiscordWebhookChunked_(webhookUrl, content) {
 
   for (const chunk of chunks) {
     postDiscordWebhook_(webhookUrl, chunk);
-    Utilities.sleep(350);
+    Utilities.sleep(DISCORD_POST_INTERVAL_MS);
   }
 }
 
